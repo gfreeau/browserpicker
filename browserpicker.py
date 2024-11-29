@@ -164,21 +164,6 @@ if OPTIONS:
     )
     active_label.pack(pady=(10,5), padx=10, fill=tkinter.X)
 
-    # Add a search bar if active browsers exist
-    search_var = tkinter.StringVar()
-    search_entry = tkinter.Entry(root, textvariable=search_var, font=("ubuntu", 11), width=40)
-    search_entry.insert(0, "Search active windows...")
-    search_entry.pack(pady=(0,10))
-    search_entry.bind("<FocusIn>", lambda e: search_entry.delete(0, tkinter.END))
-    def filter_list(event):
-        search_term = search_var.get().lower()
-        for button in buttons:
-            if search_term in button.cget("text").lower():
-                button.pack(anchor=tkinter.W, fill=tkinter.X, expand=True)
-            else:
-                button.pack_forget()
-    search_entry.bind("<KeyRelease>", filter_list)
-
     # Create frame for active browsers
     button_frame = tkinter.Frame(root)
     button_frame.pack(fill=tkinter.BOTH, expand=True)
