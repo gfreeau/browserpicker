@@ -159,3 +159,8 @@ Feel free to submit issues, fork the repository, and create pull requests for an
    - Ensure no conflicts with system shortcuts
    - Verify tkinter installation is complete
 
+---
+
+## **Credit**
+
+The original code and idea was inspired by a Stackoverflow answer that I can't remember the link to before I added new features. If you know the original answer, please let me know so I can credit you!
