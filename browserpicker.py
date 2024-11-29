@@ -159,14 +159,14 @@ if OPTIONS:
     active_label = tkinter.Label(
         root,
         text="Active Browser Windows:",
-        font=("Arial", 12, "bold"),
+        font=("Ubuntu", 10, "bold"),
         anchor=tkinter.W
     )
     active_label.pack(pady=(10,5), padx=10, fill=tkinter.X)
 
     # Add a search bar if active browsers exist
     search_var = tkinter.StringVar()
-    search_entry = tkinter.Entry(root, textvariable=search_var, font=("Arial", 14), width=40)
+    search_entry = tkinter.Entry(root, textvariable=search_var, font=("ubuntu", 11), width=40)
     search_entry.insert(0, "Search active windows...")
     search_entry.pack(pady=(0,10))
     search_entry.bind("<FocusIn>", lambda e: search_entry.delete(0, tkinter.END))
@@ -191,7 +191,7 @@ if OPTIONS:
             variable=curr_var,
             value=mode,
             indicatoron=0,
-            font=("Helvetica", 14, "bold"),
+            font=("ubuntu", 11, "bold"),
             anchor=tkinter.W,
             command=execute_option
         )
@@ -202,7 +202,7 @@ if OPTIONS:
 new_browser_label = tkinter.Label(
     root,
     text="Launch New Browser Instance:",
-    font=("Arial", 12, "bold"),
+    font=("ubuntu", 10, "bold"),
     anchor=tkinter.W
 )
 new_browser_label.pack(pady=(20,5), padx=10, fill=tkinter.X)
@@ -213,7 +213,7 @@ def add_launch_button(browser_name):
     btn = tkinter.Button(
         root,
         text=f"Open in {browser_name}",
-        font=("Helvetica", 14, "bold"),
+        font=("ubuntu", 11, "bold"),
         command=lambda: launch_browser(browser_command, URL),
     )
     btn.pack(pady=5, padx=10, fill=tkinter.X)
@@ -225,7 +225,7 @@ for browser in BROWSERS:
 footer = tkinter.Label(
     root,
     text="Use ↑/↓ to navigate, Enter to select, or click buttons to open a browser.",
-    font=("Arial", 10, "italic"),
+    font=("ubuntu", 10, "italic"),
     fg="gray"
 )
 footer.pack(side=tkinter.BOTTOM, pady=10)
