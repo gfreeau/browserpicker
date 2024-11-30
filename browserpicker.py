@@ -12,10 +12,13 @@ class BrowserPicker(Gtk.ApplicationWindow):
         self.active_buttons = []  # List to store buttons for active browser windows
         self.current_active_index = 0  # Index to track which button is active
 
+        # 
         self.BROWSERS = {
             "Mozilla Firefox": "firefox",
             "Google Chrome": "google-chrome",
         }
+        # Create search string from browser names
+        self.SEARCH_STRING = '|'.join(self.BROWSERS.keys())
 
         # Create main box with spacing and margins
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -36,11 +39,18 @@ class BrowserPicker(Gtk.ApplicationWindow):
         box.append(label)
 
         self.window_group = None
-        for title, window_id in self.get_browser_windows():
-            button = Gtk.Button(label=title)
-            button.connect('clicked', self.on_window_selected, window_id)
-            box.append(button)
-            self.active_buttons.append((button, window_id))
+        browser_windows = self.get_browser_windows()
+        if browser_windows:
+            for title, window_id in browser_windows:
+                button = Gtk.Button(label=title)
+                button.connect('clicked', self.on_window_selected, window_id)
+                box.append(button)
+                self.active_buttons.append((button, window_id))
+        else:
+            no_windows_label = Gtk.Label(label="No active browser windows found")
+            no_windows_label.add_css_class("dim-label")
+            no_windows_label.set_halign(Gtk.Align.START)
+            box.append(no_windows_label)
 
         if self.active_buttons:
             self.active_buttons[0][0].grab_focus()
@@ -66,7 +76,7 @@ class BrowserPicker(Gtk.ApplicationWindow):
 
     def get_browser_windows(self):
         """Get active browser windows using xdotool."""
-        cmd = ['xdotool', 'search', '--name', 'Mozilla Firefox|Google Chrome']
+        cmd = ['xdotool', 'search', '--name', self.SEARCH_STRING]
         result = subprocess.run(cmd, stdout=subprocess.PIPE)
         window_ids = result.stdout.decode('utf-8').rstrip().split("\n")
 
