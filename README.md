@@ -1,13 +1,18 @@
 # **Browser Picker Script**
 
+![Screenshot](screenshot.png)
+
 ## **Overview**
 
-The **Browser Picker Script** allows you to dynamically select which browser to use when opening links in Linux. It's useful if you use multiple browsers or browser profiles such as chrome profiles and want to open links in a specific browser each time. It's been tested on Ubuntu, Debian and Mint.
+The **Browser Picker Script** allows you to dynamically select which browser to use when opening links in Linux. So if you click on a link in a terminal, application or a notification, it will open in the browser you select. It's useful if you use multiple browsers or browser profiles such as chrome profiles and want to open links in a specific browser each time. It's been tested in Linux Mint with Cinnamon Desktop but should be fine on Ubuntu and Debian as well.
+
+### **Problem it solves**
+
+- You have different browsers or browser profiles for work and personal use and want to open links in the correct browser
 
 ### **Key Features**
 - Dynamically choose between active browser windows (e.g., Chrome, Firefox).
 - Support for opening URLs in new browser instances if no active windows are found.
-- Search functionality for filtering active browser windows.
 - Fully configurable to set as the default browser for your system.
 
 ---
@@ -25,7 +30,7 @@ The **Browser Picker Script** allows you to dynamically select which browser to 
 
 2. **Dependencies**
    ```bash
-   sudo apt install python3 python3-tk xdotool
+   sudo apt install python3 python3-gtk-4-0 xdotool
    ```
 
 ### **Setup Steps**
@@ -35,6 +40,7 @@ The **Browser Picker Script** allows you to dynamically select which browser to 
    ```bash
    mkdir -p ~/bin
    # Copy browserpicker.py to ~/bin/
+   # Note: browserpicker_tkinter.py is kept for legacy support
    ```
 
 2. **Make the Script Executable**
@@ -89,14 +95,13 @@ Run the script directly with a URL:
 ```
 
 ### **Interface**
-The Browser Picker provides an intuitive GUI with the following features:
+The Browser Picker provides an intuitive GTK4-based GUI with the following features:
 
 - **Active Window Selection**: Shows all currently open browser windows
-- **Search Functionality**: Filter active windows using the search bar
 - **New Browser Options**: Launch new instances of installed browsers
 - **Keyboard Navigation**:
-  - `↑`/`k`: Select previous option
-  - `↓`/`j`: Select next option
+  - `↑`: Select previous option
+  - `↓`: Select next option
   - `Enter`: Open URL in selected browser/window
 
 ### **Supported Browsers**
@@ -105,38 +110,26 @@ The Browser Picker provides an intuitive GUI with the following features:
 
 ## **Configuration**
 
-The script can be customized by modifying the following variables in `browserpicker.py`:
-
-```python
-SEARCH_STRING = 'Mozilla Firefox|Google Chrome'  # Modify to search for different browser windows
-BROWSERS = {
-    "Mozilla Firefox": "firefox",
-    "Google Chrome": "google-chrome",
-}  # Add or modify browser commands
-```
-
 ### **Adding Additional Browsers**
 
 The script can be configured to support other browsers like Brave. Simply modify your `browserpicker.py`:
 
 ```python:browserpicker.py
 # Modify these variables to add support for additional browsers
-SEARCH_STRING = 'Mozilla Firefox|Google Chrome|Brave Browser'
-BROWSERS = {
+self.BROWSERS = {
     "Mozilla Firefox": "firefox",
     "Google Chrome": "google-chrome",
     "Brave Browser": "brave-browser"  # Add additional browsers here
 }
 ```
 
-The browser command (right side of the dictionary) should match the executable name in your system PATH.
+The dictionary key is the name of the browser that will be displayed in the GUI. The value is the command to launch the browser.
+
+The browser command should match the executable name in your system PATH.
 
 ## **Technical Details**
 
 - Uses `xdotool` for window management and keyboard simulation
-- Automatically detects and positions the window on the active monitor
-- Supports multi-monitor setups
-- Handles browser window activation across different virtual desktops
 
 ## **Contributing**
 
@@ -147,10 +140,6 @@ Feel free to submit issues, fork the repository, and create pull requests for an
 ## **Troubleshooting**
 
 ### Common Issues
-1. **Window not appearing on correct monitor**
-   - Ensure xrandr is working correctly
-   - Check monitor configuration in system settings
-
 2. **Browser not launching**
    - Verify browser executables are in your system PATH
    - Check that browser packages are properly installed
@@ -163,4 +152,4 @@ Feel free to submit issues, fork the repository, and create pull requests for an
 
 ## **Credit**
 
-The original code and idea was inspired by a Stackoverflow answer that I can't remember the link to before I added new features. If you know the original answer, please let me know so I can credit you!
+The original code and idea was inspired by a Stackoverflow answer done using tkinter. I can't remember the link to before I added new features. If you know the original answer, please let me know so I can credit you! The tkinter version is kept in `browserpicker_tkinter.py` but I won't be updating it.

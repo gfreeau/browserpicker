@@ -1,227 +1,168 @@
 #!/usr/bin/env python3
-
 import sys
-import tkinter
+import gi
+gi.require_version('Gtk', '4.0')
+from gi.repository import Gtk, Gio, Gdk
 import subprocess
 
-URL = sys.argv[1] if len(sys.argv) > 1 else None
-SEARCH_STRING = 'Mozilla Firefox|Google Chrome'
-BROWSERS = {
-    "Mozilla Firefox": "firefox",
-    "Google Chrome": "google-chrome",
-}
+class BrowserPicker(Gtk.ApplicationWindow):
+    def __init__(self, app, url=None):
+        super().__init__(application=app, title="Select Browser to Open Link In")
+        self.url = url
+        self.active_buttons = []  # List to store buttons for active browser windows
+        self.current_active_index = 0  # Index to track which button is active
 
-def get_options():
-    """Get active browser windows using xdotool."""
-    cmd = ['xdotool', 'search', '--name', SEARCH_STRING]
-    result = subprocess.run(cmd, stdout=subprocess.PIPE)
-    window_ids = result.stdout.decode('utf-8').rstrip().split("\n")
+        self.BROWSERS = {
+            "Mozilla Firefox": "firefox",
+            "Google Chrome": "google-chrome",
+        }
 
-    options = []
-    for id in window_ids:
-        if id:  # Skip empty IDs
-            cmd = ['xdotool', 'getwindowname', id]
-            result = subprocess.run(cmd, stdout=subprocess.PIPE)
-            title = result.stdout.decode('utf-8').rstrip()
-            options.append((title, id))
+        # Create main box with spacing and margins
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.set_margin_start(18)
+        box.set_margin_end(18)
+        box.set_margin_top(18)
+        box.set_margin_bottom(18)
+        self.set_child(box)
 
-    return options
+        key_controller = Gtk.EventControllerKey()
+        key_controller.connect("key-pressed", self.on_key_press)
+        self.add_controller(key_controller)
 
-def launch_browser(browser_command, url=None):
-    """Launch the specified browser with the given URL."""
-    try:
-        if browser_command == "google-chrome":
-            cmd = [browser_command, "--show-profile-picker"]
-            if url:
-                cmd.append(url)
-            subprocess.Popen(cmd)
-        else:
-            if url:
-                subprocess.Popen([browser_command, url])
-            else:
-                subprocess.Popen([browser_command])
-        print(f"Launching {browser_command}...")
-        kill_window()  # Close the picker window after launching
-    except FileNotFoundError:
-        print(f"Error: {browser_command} is not installed or not in PATH.")
+        # Active windows section
+        label = Gtk.Label(label="Active Browser Windows")
+        label.set_halign(Gtk.Align.START)
+        label.add_css_class("heading")
+        box.append(label)
 
-def get_active_monitor_geometry():
-    """Get the geometry of the monitor where the mouse pointer is located."""
-    # Get mouse position
-    cmd = ['xdotool', 'getmouselocation', '--shell']
-    result = subprocess.run(cmd, stdout=subprocess.PIPE)
-    output = result.stdout.decode('utf-8').splitlines()
-    
-    mouse_x, mouse_y = None, None
-    for line in output:
-        if line.startswith("X="):
-            mouse_x = int(line.split("=")[1])
-        if line.startswith("Y="):
-            mouse_y = int(line.split("=")[1])
-    
-    if mouse_x is None or mouse_y is None:
-        return None  # Fallback to default behavior if mouse position is not found
+        self.window_group = None
+        for title, window_id in self.get_browser_windows():
+            button = Gtk.Button(label=title)
+            button.connect('clicked', self.on_window_selected, window_id)
+            box.append(button)
+            self.active_buttons.append((button, window_id))
 
-    # Get monitor geometry from xrandr
-    cmd = ['xrandr']
-    result = subprocess.run(cmd, stdout=subprocess.PIPE)
-    xrandr_output = result.stdout.decode('utf-8').splitlines()
+        if self.active_buttons:
+            self.active_buttons[0][0].grab_focus()
+            self.active_buttons[0][0].add_css_class("suggested-action")
 
-    for line in xrandr_output:
-        if " connected" in line:
-            # Extract geometry, e.g., "1920x1080+0+0"
-            parts = line.split()
-            for part in parts:
-                if "x" in part and "+" in part:  # Ensure it's a valid geometry string
-                    res, offset_x, offset_y = part.split("+")
-                    width, height = map(int, res.split("x"))
-                    offset_x, offset_y = int(offset_x), int(offset_y)
+        # New browser section
+        label = Gtk.Label(label="Launch New Browser")
+        label.set_halign(Gtk.Align.START)
+        label.add_css_class("heading")
+        box.append(label)
 
-                    # Check if the mouse pointer is within this monitor's bounds
-                    if offset_x <= mouse_x < offset_x + width and offset_y <= mouse_y < offset_y + height:
-                        return width, height, offset_x, offset_y
+        for name, command in self.BROWSERS.items():
+            button = Gtk.Button(label=f"Open in {name}")
+            button.connect('clicked', self.on_launch_browser, command)
+            box.append(button)
 
-    return None  # Fallback if no monitor geometry matches
-
-def kill_window(event=None):
-    root.destroy()
-
-def select_prev_option(event):
-    val = curr_var.get()
-    idx = [i for i, option in enumerate(OPTIONS) if option[1] == val][0]
-    if idx > 0:
-        curr_var.set(OPTIONS[idx-1][1])
-
-def select_next_option(event):
-    val = curr_var.get()
-    idx = [i for i, option in enumerate(OPTIONS) if option[1] == val][0]
-    if idx < len(OPTIONS)-1:
-        curr_var.set(OPTIONS[idx+1][1])
-
-def execute_option(event=None):
-    selected_option = curr_var.get()
-
-    # Handle selecting an active browser window
-    window_id = selected_option
-    cmd = ['xdotool', 'get_desktop']
-    result = subprocess.run(cmd, stdout=subprocess.PIPE)
-    current_desktop = int(result.stdout.decode('utf-8').rstrip())
-
-    cmd = ['xdotool', 'get_desktop_for_window', window_id]
-    result = subprocess.run(cmd, stdout=subprocess.PIPE)
-    window_desktop = int(result.stdout.decode('utf-8').rstrip())
-
-    if current_desktop != window_desktop:
-        cmd = ['xdotool', 'set_desktop', str(window_desktop)]
-        subprocess.run(cmd, stdout=subprocess.PIPE)
-
-    cmd = ['xdotool', 'windowactivate', '--sync', window_id]
-    subprocess.run(cmd, stdout=subprocess.PIPE)
-
-    if URL:
-        cmd = [
-            'xdotool', 'key', '--clearmodifiers', '--window', window_id, 'ctrl+t',
-            'sleep', '.1',
-            'type', '--clearmodifiers', URL
-        ]
-        subprocess.run(cmd, stdout=subprocess.PIPE)
-
-        cmd = ['xdotool', 'key', '--clearmodifiers', '--window', window_id, 'Return']
-        subprocess.run(cmd, stdout=subprocess.PIPE)
-
-    kill_window()
-
-# Initialize GUI
-root = tkinter.Tk()
-root.title("Select Browser to Open Link")
-
-# Get active browser windows
-OPTIONS = get_options()
-
-# Position window on the active monitor
-monitor_geometry = get_active_monitor_geometry()
-if monitor_geometry:
-    monitor_width, monitor_height, monitor_offset_x, monitor_offset_y = monitor_geometry
-    window_width = 800
-    window_height = 400
-    x = monitor_offset_x + (monitor_width - window_width) // 2
-    y = monitor_offset_y + (monitor_height - window_height) // 2
-    root.geometry(f"{window_width}x{window_height}+{x}+{y}")
-else:
-    root.geometry("800x400")  # Default size and position fallback
-
-# Add active browser options
-if OPTIONS:
-    curr_var = tkinter.StringVar()
-    curr_var.set(OPTIONS[0][1])
-
-    # Add section label for active browsers
-    active_label = tkinter.Label(
-        root,
-        text="Active Browser Windows:",
-        font=("Ubuntu", 10, "bold"),
-        anchor=tkinter.W
-    )
-    active_label.pack(pady=(10,5), padx=10, fill=tkinter.X)
-
-    # Create frame for active browsers
-    button_frame = tkinter.Frame(root)
-    button_frame.pack(fill=tkinter.BOTH, expand=True)
-
-    buttons = []
-    for text, mode in OPTIONS:
-        b = tkinter.Radiobutton(
-            button_frame,
-            text=text,
-            variable=curr_var,
-            value=mode,
-            indicatoron=0,
-            font=("ubuntu", 11, "bold"),
-            anchor=tkinter.W,
-            command=execute_option
+        instruction_label = Gtk.Label(
+            label="Use ↑/↓ to navigate, Enter to select, or click buttons to open a browser."
         )
-        b.pack(fill=tkinter.X, pady=5, padx=5)
-        buttons.append(b)
+        instruction_label.add_css_class("dim-label")
+        instruction_label.set_margin_top(12)
+        box.append(instruction_label)
 
-# Add section label for new browser launches
-new_browser_label = tkinter.Label(
-    root,
-    text="Launch New Browser Instance:",
-    font=("ubuntu", 10, "bold"),
-    anchor=tkinter.W
-)
-new_browser_label.pack(pady=(20,5), padx=10, fill=tkinter.X)
+    def get_browser_windows(self):
+        """Get active browser windows using xdotool."""
+        cmd = ['xdotool', 'search', '--name', 'Mozilla Firefox|Google Chrome']
+        result = subprocess.run(cmd, stdout=subprocess.PIPE)
+        window_ids = result.stdout.decode('utf-8').rstrip().split("\n")
 
-# Add buttons for launching new browsers
-def add_launch_button(browser_name):
-    browser_command = BROWSERS[browser_name]
-    btn = tkinter.Button(
-        root,
-        text=f"Open in {browser_name}",
-        font=("ubuntu", 11, "bold"),
-        command=lambda: launch_browser(browser_command, URL),
-    )
-    btn.pack(pady=5, padx=10, fill=tkinter.X)
+        windows = []
+        for id in window_ids:
+            if id:  # Skip empty IDs
+                cmd = ['xdotool', 'getwindowname', id]
+                result = subprocess.run(cmd, stdout=subprocess.PIPE)
+                title = result.stdout.decode('utf-8').rstrip()
+                windows.append((title, id))
+        return windows
 
-for browser in BROWSERS:
-    add_launch_button(browser)
+    def on_window_selected(self, button, window_id):
+        """Activate the selected window."""
+        subprocess.run(['xdotool', 'windowactivate', '--sync', window_id])
+        if self.url:
+            cmd = [
+                'xdotool', 'key', '--clearmodifiers', '--window', window_id, 'ctrl+t',
+                'sleep', '.1',
+                'type', '--clearmodifiers', self.url
+            ]
+            subprocess.run(cmd)
+            
+            cmd = ['xdotool', 'key', '--clearmodifiers', '--window', window_id, 'Return']
+            subprocess.run(cmd)
+        self.close()
 
-# Footer with instructions
-footer = tkinter.Label(
-    root,
-    text="Use ↑/↓ to navigate, Enter to select, or click buttons to open a browser.",
-    font=("ubuntu", 10, "italic"),
-    fg="gray"
-)
-footer.pack(side=tkinter.BOTTOM, pady=10)
+    def on_launch_browser(self, button, browser_command):
+        """Launch a new browser instance."""
+        try:
+            if browser_command == "google-chrome":
+                cmd = [browser_command, "--show-profile-picker"]
+                if self.url:
+                    cmd.append(self.url)
+                subprocess.Popen(cmd)
+            else:
+                cmd = [browser_command]
+                if self.url:
+                    cmd.append(self.url)
+                subprocess.Popen(cmd)
+            self.close()
+        except FileNotFoundError:
+            print(f"Error: {browser_command} is not installed or not in PATH.")
 
-# Keyboard bindings for navigation
-if OPTIONS:
-    root.bind("<j>", select_next_option)
-    root.bind("<Down>", select_next_option)
-    root.bind("<k>", select_prev_option)
-    root.bind("<Up>", select_prev_option)
-    root.bind("<Return>", execute_option)
+    def on_key_press(self, controller, keyval, keycode, state):
+        """Handle key press events for keyboard navigation."""
+        if not self.active_buttons:
+            return False
 
-root.mainloop()
+        if keyval == Gdk.KEY_Down or keyval == Gdk.KEY_Up:
+            # Remove suggested-action class from current button
+            self.active_buttons[self.current_active_index][0].remove_css_class("suggested-action")
+            
+            # Update index
+            if keyval == Gdk.KEY_Down:
+                self.current_active_index += 1
+                if self.current_active_index >= len(self.active_buttons):
+                    self.current_active_index = 0  # Wrap around
+            else:  # Up
+                self.current_active_index -= 1
+                if self.current_active_index < 0:
+                    self.current_active_index = len(self.active_buttons) - 1  # Wrap around
+            
+            # Add suggested-action class to new button and focus it
+            button = self.active_buttons[self.current_active_index][0]
+            button.add_css_class("suggested-action")
+            button.grab_focus()
+            return True
+            
+        elif keyval == Gdk.KEY_Return:
+            if self.active_buttons:
+                button, window_id = self.active_buttons[self.current_active_index]
+                self.on_window_selected(button, window_id)
+            return True
+            
+        return False
 
+class BrowserPickerApp(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id="org.x.browser-picker",
+                        flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
+
+    def do_activate(self):
+        win = BrowserPicker(self)
+        win.present()
+
+    def do_command_line(self, command_line):
+        args = command_line.get_arguments()
+        if len(args) > 1:
+            # First argument is the program name, second would be the URL
+            win = BrowserPicker(self, args[1])
+        else:
+            win = BrowserPicker(self)
+        win.present()
+        return 0
+
+if __name__ == "__main__":
+    app = BrowserPickerApp()
+    app.run(sys.argv)
